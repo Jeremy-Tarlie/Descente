@@ -1,30 +1,42 @@
 # Descente
 
-Roguelike 2D en C++20 : donjon procédural, combat au tour par tour, inventaire et boss final.
+**Descente** est un roguelike 2D : tu explores un donjon généré à chaque partie, tu combats au tour par tour, tu gères ton inventaire, et tu affrontes un boss final.
 
-**But du jeu :** descendre jusqu'à l'étage 5, vaincre le **Gardien Abyssal**, puis ramasser l'**Éclat Abyssal**.
+## À quoi ça sert ?
 
-## Téléchargement
+C'est un jeu. Tu incarnes un aventurier qui descend dans les profondeurs.
 
-Les binaires précompilés (Windows, Linux, macOS) sont publiés sur la page [Releases](../../releases) à chaque tag `v*`.
+**Objectif :** atteindre l'étage 5, vaincre le **Gardien Abyssal**, puis ramasser l'**Éclat Abyssal**.
+
+## Installation (recommandée)
+
+1. Va sur la page [Releases](../../releases).
+2. Télécharge l'archive pour ton système :
+   - Windows → `descente-*-windows-x64.zip`
+   - Linux → `descente-*-linux-x64.tar.gz`
+   - macOS → `descente-*-macos-arm64.tar.gz`
+3. Décompresse l'archive.
+4. Lance l'exécutable `descente` (ou `descente.exe` sous Windows).
+
+Sous Linux / macOS, si besoin :
 
 ```bash
-git tag v1.1.0
-git push origin v1.1.0
+chmod +x descente
+./descente
 ```
 
-## Licence
+## Compiler depuis les sources
 
-Ce projet est sous licence [MIT](LICENSE).
+Utile si tu préfères builder toi-même, ou s'il n'y a pas encore de release pour ta plateforme.
 
-## Prérequis
+### Prérequis
 
 - CMake ≥ 3.16
-- Compilateur C++20 (MSVC, Clang ou GCC)
-- Ninja (recommandé) ou un générateur CMake supporté
-- Connexion internet au premier build (raylib et Catch2 via FetchContent)
+- Un compilateur C++20 (MSVC, Clang ou GCC)
+- Ninja (recommandé)
+- Une connexion internet au **premier** build (dépendances téléchargées automatiquement)
 
-Sous Linux :
+Sous Linux, installe aussi les paquets graphiques :
 
 ```bash
 sudo apt install build-essential cmake ninja-build \
@@ -32,22 +44,14 @@ sudo apt install build-essential cmake ninja-build \
   libxrandr-dev libxi-dev libxinerama-dev
 ```
 
-## Build
+### Compilation
 
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
 
-Binaire : `build/descente` (ou `build/descente.exe` sous Windows).
-
-### Tests
-
-```bash
-ctest --test-dir build --output-on-failure
-```
-
-## Lancer
+Puis lance :
 
 ```bash
 ./build/descente          # Linux / macOS
@@ -59,35 +63,15 @@ ctest --test-dir build --output-on-failure
 | Touche | Action |
 | --- | --- |
 | WASD / flèches | Se déplacer (maintenir pour avancer) |
-| G | Ramasser |
-| I | Inventaire (cliquer un objet pour l'utiliser) |
+| G | Ramasser un objet |
+| I | Ouvrir l'inventaire (cliquer un objet pour l'utiliser) |
 | F | Descendre l'escalier |
-| Espace / `.` | Attendre |
+| Espace / `.` | Attendre un tour |
 | Shift+S | Sauvegarder |
-| C | Charger |
+| C | Charger une sauvegarde |
 | Esc / Q | Quitter |
-| N | Nouvelle partie (mort / victoire) |
+| N | Nouvelle partie (après une mort ou une victoire) |
 
-## Structure
+## Licence
 
-```text
-src/
-  ecs/           Entités & ComponentStore
-  map/           Carte + génération BSP
-  fov/           Champ de vision (shadowcasting)
-  pathfinding/   A*
-  game/          Boucle de jeu, composants, sauvegarde
-  systems/       Combat, IA, inventaire
-  ui/            Rendu raylib, sprites, input
-tests/           Catch2 (BSP + A*)
-```
-
-- `descente_core` — logique pure (sans fenêtre, utilisée par les tests)
-- `descente` — UI raylib + exécutable
-
-## CI / CD
-
-| Workflow | Déclencheur | Action |
-| --- | --- | --- |
-| CI | Push / PR sur `main` ou `master` | Build Release + tests (Windows, Linux, macOS) |
-| Release | Tag `v*` | Packaging des exécutables + GitHub Release |
+Ce projet est libre, sous licence [MIT](LICENSE).

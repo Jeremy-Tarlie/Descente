@@ -1,0 +1,123 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.config.artifact }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - os: windows-latest
+            generator: Ninja
+            artifact: windows-x64
+            binary: descente.exe
+            archive: zip
+          - os: ubuntu-latest
+            generator: Ninja
+            artifact: linux-x64
+            binary: descente
+            archive: tar.gz
+          - os: macos-latest
+            generator: Ninja
+            artifact: macos-arm64
+            binary: descente
+            archive: tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ninja-build \
+            libgl1-mesa-dev \
+            libx11-dev \
+            libxcursor-dev \
+            libxrandr-dev \
+            libxi-dev \
+            libxinerama-dev
+
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: Install Windows dependencies
+        if: runner.os == 'Windows'
+        run: choco install ninja -y
+
+      - name: Setup MSVC environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure
+        run: >
+          cmake -S . -B build
+          -G "${{ matrix.config.generator }}"
+          -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -C Release
+
+      - name: Package (Windows)
+        if: matrix.config.archive == 'zip'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item "build/${{ matrix.config.binary }}" "dist/"
+          Copy-Item LICENSE, README.md "dist/"
+          Compress-Archive -Path dist/* -DestinationPath "descente-${{ github.ref_name }}-${{ matrix.config.artifact }}.zip"
+
+      - name: Package (Unix)
+        if: matrix.config.archive == 'tar.gz'
+        run: |
+          mkdir -p dist
+          cp "build/${{ matrix.config.binary }}" dist/
+          cp LICENSE README.md dist/
+          chmod +x "dist/${{ matrix.config.binary }}"
+          tar -czf "descente-${{ github.ref_name }}-${{ matrix.config.artifact }}.tar.gz" -C dist .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: descente-${{ matrix.config.artifact }}
+          path: descente-${{ github.ref_name }}-${{ matrix.config.artifact }}.*
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List packages
+        run: find artifacts -type f | sort
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

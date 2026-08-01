@@ -52,7 +52,8 @@ DungeonResult BspGenerator::generate(const BspConfig& config) {
 }
 
 bool BspGenerator::split_leaf(const int index, const BspConfig& config, const int depth) {
-  Leaf& leaf = leaves_[static_cast<std::size_t>(index)];
+  // Copy fields before any push_back — a Leaf& would dangle on reallocation.
+  const Leaf leaf = leaves_[static_cast<std::size_t>(index)];
   if (leaf.left >= 0 || leaf.right >= 0) {
     return false;
   }
@@ -82,6 +83,9 @@ bool BspGenerator::split_leaf(const int index, const BspConfig& config, const in
     split_horizontal = true;
   }
 
+  int left_idx = -1;
+  int right_idx = -1;
+
   if (split_horizontal) {
     const int min_cut = config.min_leaf_size;
     const int max_cut = leaf.h - config.min_leaf_size;
@@ -90,14 +94,11 @@ bool BspGenerator::split_leaf(const int index, const BspConfig& config, const in
     }
     std::uniform_int_distribution<int> dist(min_cut, max_cut);
     const int cut = dist(rng_);
-    const int left_idx = static_cast<int>(leaves_.size());
+    left_idx = static_cast<int>(leaves_.size());
     leaves_.push_back(Leaf{leaf.x, leaf.y, leaf.w, cut, -1, -1, std::nullopt});
-    const int right_idx = static_cast<int>(leaves_.size());
+    right_idx = static_cast<int>(leaves_.size());
     leaves_.push_back(
         Leaf{leaf.x, leaf.y + cut, leaf.w, leaf.h - cut, -1, -1, std::nullopt});
-    // Re-fetch leaf after push_back (may reallocate)
-    leaves_[static_cast<std::size_t>(index)].left = left_idx;
-    leaves_[static_cast<std::size_t>(index)].right = right_idx;
   } else {
     const int min_cut = config.min_leaf_size;
     const int max_cut = leaf.w - config.min_leaf_size;
@@ -106,19 +107,17 @@ bool BspGenerator::split_leaf(const int index, const BspConfig& config, const in
     }
     std::uniform_int_distribution<int> dist(min_cut, max_cut);
     const int cut = dist(rng_);
-    const int left_idx = static_cast<int>(leaves_.size());
+    left_idx = static_cast<int>(leaves_.size());
     leaves_.push_back(Leaf{leaf.x, leaf.y, cut, leaf.h, -1, -1, std::nullopt});
-    const int right_idx = static_cast<int>(leaves_.size());
+    right_idx = static_cast<int>(leaves_.size());
     leaves_.push_back(
         Leaf{leaf.x + cut, leaf.y, leaf.w - cut, leaf.h, -1, -1, std::nullopt});
-    leaves_[static_cast<std::size_t>(index)].left = left_idx;
-    leaves_[static_cast<std::size_t>(index)].right = right_idx;
   }
 
-  const int left = leaves_[static_cast<std::size_t>(index)].left;
-  const int right = leaves_[static_cast<std::size_t>(index)].right;
-  split_leaf(left, config, depth + 1);
-  split_leaf(right, config, depth + 1);
+  leaves_[static_cast<std::size_t>(index)].left = left_idx;
+  leaves_[static_cast<std::size_t>(index)].right = right_idx;
+  split_leaf(left_idx, config, depth + 1);
+  split_leaf(right_idx, config, depth + 1);
   return true;
 }
 
